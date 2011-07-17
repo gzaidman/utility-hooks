@@ -25,7 +25,7 @@ sub arr2hash {
 my %exts = (
     php => sub {
         for (@_) {
-            if (system(`php -l $_`) != 0) {
+            if (system("php -l $_ > /dev/null 2>&1") != 0) {
                 return 0;
             }
         }
@@ -51,7 +51,8 @@ my %exts = (
     },
 ); 
 my %files;
-my @git = `git diff-index --cached --name-only HEAD`;
+my $against = system("git rev-parse --verify HEAD 2> /dev/null") ? '4b825dc642cb6eb9a060e54bf8d69288fbee4904' : 'HEAD';
+my @git = `git diff-index --cached --name-only $against`;
 for (@git) {
     chomp($_);
     my ($file, $ext) = split(/\./);
