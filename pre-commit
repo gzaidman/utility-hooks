@@ -1,0 +1,71 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+
+
+sub arr2hash {
+    if (@_ % 2 > 0) {
+        return 0;
+    }
+    my %h;
+    my $i = 0;
+    while ($i < $#_) {
+        unless (defined($h{$_[$i]})) {
+            $h{$_[$i]} = [];
+        }
+        push($h{$_[$i]}, $_[$i+1]);
+        $i += 2;
+    }
+    return %h;
+}
+
+
+
+my %exts = (
+    php => sub {
+        for (@_) {
+            if (`php -l $_` !~ /^No/i) {
+                return 0;
+            }
+        }
+        return 1;
+    },
+    css => sub {
+        my $exec = 'csslint --format=compact';
+        $exec .= " $_" for (@_);
+        my %matches = arr2hash(`$exec` =~ /^(\S+):\s+(?:.+,){2}\s+(.+)$/mg);
+        if (keys(%matches) > 0) {
+            return 0;
+        }
+        return 1;
+    },
+    js => sub {
+        my $exec = 'jshint';
+        $exec .= " $_" for (@_);
+        my %matches = arr2hash(`$exec` =~ /^(\S+):\s+(?:.+,){2}\s+(.+)$/mg);
+        if (keys(%matches) > 0) {
+            return 0;
+        }
+        return 1;
+    },
+); 
+my %files;
+my @git = `git diff-index --cached --name-only HEAD`;
+for (@git) {
+    chomp($_);
+    my ($file, $ext) = split(/\./);
+    $ext = lc($ext);
+    if (defined($ext) and defined($exts{$ext})) {
+        unless (defined($files{($ext)})) {
+            $files{$ext} = [];
+        }
+        push($files{$ext}, $_);
+    }
+}
+for (keys(%files)) {
+    unless ($exts{$_}(@{$files{$_}})) {
+        print "Failed validating $_ \n";
+        exit 1;
+    }
+}
