@@ -25,7 +25,7 @@ sub arr2hash {
 my %exts = (
     php => sub {
         for (@_) {
-            if (`php -l $_` !~ /^No/i) {
+            if (system(`php -l $_`) != 0) {
                 return 0;
             }
         }
